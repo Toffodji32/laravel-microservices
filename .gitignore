@@ -1,0 +1,23 @@
+# Dépendances
+**/vendor/
+**/node_modules/
+
+# Fichiers d'environnement (contiennent les mots de passe !)
+**/.env
+!**/.env.example
+
+# Cache Laravel
+**/bootstrap/cache/*.php
+**/storage/framework/cache/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/storage/logs/*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
