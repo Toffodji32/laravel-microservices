@@ -1,0 +1,209 @@
+name: CI — Tests automatiques
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  test-auth-service:
+    name: Tests Auth Service
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: auth_db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_pgsql, zip, mbstring
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: services/auth-service/vendor
+          key: auth-composer-${{ hashFiles('services/auth-service/composer.lock') }}
+
+      - name: Installation des dépendances
+        working-directory: services/auth-service
+        run: composer install --prefer-dist --no-progress
+
+      - name: Configuration .env de test
+        working-directory: services/auth-service
+        run: |
+          cp .env.example .env.testing
+          echo "APP_KEY=" >> .env.testing
+          echo "DB_CONNECTION=pgsql" >> .env.testing
+          echo "DB_HOST=127.0.0.1" >> .env.testing
+          echo "DB_PORT=5432" >> .env.testing
+          echo "DB_DATABASE=auth_db_test" >> .env.testing
+          echo "DB_USERNAME=postgres" >> .env.testing
+          echo "DB_PASSWORD=secret" >> .env.testing
+          echo "AUTH_GUARD=api" >> .env.testing
+          echo "JWT_SECRET=test_secret_key_for_ci_pipeline_only" >> .env.testing
+          echo "CACHE_STORE=file" >> .env.testing
+          echo "SESSION_DRIVER=file" >> .env.testing
+          echo "QUEUE_CONNECTION=sync" >> .env.testing
+
+      - name: Génération APP_KEY
+        working-directory: services/auth-service
+        run: php artisan key:generate --env=testing
+
+      - name: Migrations de test
+        working-directory: services/auth-service
+        run: php artisan migrate --env=testing --force
+
+      - name: Lancement des tests
+        working-directory: services/auth-service
+        run: php artisan test --env=testing
+
+  test-product-service:
+    name: Tests Product Service
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: product_db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_pgsql, zip, mbstring
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: services/product-service/vendor
+          key: product-composer-${{ hashFiles('services/product-service/composer.lock') }}
+
+      - name: Installation des dépendances
+        working-directory: services/product-service
+        run: composer install --prefer-dist --no-progress
+
+      - name: Configuration .env de test
+        working-directory: services/product-service
+        run: |
+          cp .env.example .env.testing
+          echo "APP_KEY=" >> .env.testing
+          echo "DB_CONNECTION=pgsql" >> .env.testing
+          echo "DB_HOST=127.0.0.1" >> .env.testing
+          echo "DB_PORT=5432" >> .env.testing
+          echo "DB_DATABASE=product_db_test" >> .env.testing
+          echo "DB_USERNAME=postgres" >> .env.testing
+          echo "DB_PASSWORD=secret" >> .env.testing
+          echo "AUTH_GUARD=api" >> .env.testing
+          echo "JWT_SECRET=test_secret_key_for_ci_pipeline_only" >> .env.testing
+          echo "CACHE_STORE=file" >> .env.testing
+          echo "SESSION_DRIVER=file" >> .env.testing
+          echo "QUEUE_CONNECTION=sync" >> .env.testing
+
+      - name: Génération APP_KEY
+        working-directory: services/product-service
+        run: php artisan key:generate --env=testing
+
+      - name: Migrations de test
+        working-directory: services/product-service
+        run: php artisan migrate --env=testing --force
+
+      - name: Lancement des tests
+        working-directory: services/product-service
+        run: php artisan test --env=testing
+
+  test-order-service:
+    name: Tests Order Service
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: order_db_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_pgsql, zip, mbstring
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: services/order-service/vendor
+          key: order-composer-${{ hashFiles('services/order-service/composer.lock') }}
+
+      - name: Installation des dépendances
+        working-directory: services/order-service
+        run: composer install --prefer-dist --no-progress
+
+      - name: Configuration .env de test
+        working-directory: services/order-service
+        run: |
+          cp .env.example .env.testing
+          echo "APP_KEY=" >> .env.testing
+          echo "DB_CONNECTION=pgsql" >> .env.testing
+          echo "DB_HOST=127.0.0.1" >> .env.testing
+          echo "DB_PORT=5432" >> .env.testing
+          echo "DB_DATABASE=order_db_test" >> .env.testing
+          echo "DB_USERNAME=postgres" >> .env.testing
+          echo "DB_PASSWORD=secret" >> .env.testing
+          echo "AUTH_GUARD=api" >> .env.testing
+          echo "JWT_SECRET=test_secret_key_for_ci_pipeline_only" >> .env.testing
+          echo "CACHE_STORE=file" >> .env.testing
+          echo "SESSION_DRIVER=file" >> .env.testing
+          echo "QUEUE_CONNECTION=sync" >> .env.testing
+
+      - name: Génération APP_KEY
+        working-directory: services/order-service
+        run: php artisan key:generate --env=testing
+
+      - name: Migrations de test
+        working-directory: services/order-service
+        run: php artisan migrate --env=testing --force
+
+      - name: Lancement des tests
+        working-directory: services/order-service
+        run: php artisan test --env=testing

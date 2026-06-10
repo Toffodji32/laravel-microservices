@@ -1,0 +1,98 @@
+name: CD — Build Docker & Déploiement Railway
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_PREFIX: ${{ secrets.DOCKERHUB_USERNAME }}/laravel-microservices
+
+jobs:
+
+  build-and-push:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: []
+
+    strategy:
+      matrix:
+        service: [auth-service, product-service, order-service]
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Métadonnées Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+
+      - name: Build et Push — ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-railway:
+    name: Deploy sur Railway
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy auth-service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --service auth-service \
+            --detach \
+            --dir services/auth-service
+
+      - name: Deploy product-service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --service product-service \
+            --detach \
+            --dir services/product-service
+
+      - name: Deploy order-service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --service order-service \
+            --detach \
+            --dir services/order-service
+
+      - name: Résumé du déploiement
+        run: |
+          echo "## Déploiement terminé !" >> $GITHUB_STEP_SUMMARY
+          echo "- auth-service    : déployé ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- product-service : déployé ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- order-service   : déployé ✅" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
